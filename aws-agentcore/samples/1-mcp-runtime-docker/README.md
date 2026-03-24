@@ -2,13 +2,12 @@
 
 ## Introduction
 
-This sample demonstrates how to deploy an AWS AgentCore Runtime with a custom-built Neo4j MCP Docker image.
-A local Dockerfile extends the Neo4j MCP server and configures it for HTTP transport, which is then pushed to ECR and
-deployed via CDK as an AgentCore Runtime.
+This sample demonstrates how to deploy an AWS AgentCore Runtime with a pre-built Neo4j MCP Docker image from ECR.
+The Neo4j MCP server is configured for HTTP transport and deployed via CDK as an AgentCore Runtime.
 
 **Key Features:**
 
-- **Custom Docker Build**: Builds and pushes a local Neo4j MCP Docker image via CDK ECR Assets
+- **Pre-built Docker Image**: Uses a pre-built Neo4j MCP Docker image from ECR
 - **IAM Authentication**: Uses AWS IAM permissions for secure, public runtime access
 - **Header-Based Authentication**: Neo4j-Credentials are provided securely via a custom `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization` header
 - **Serverless Deployment**: Fully managed AgentCore runtime
@@ -32,8 +31,8 @@ deployed via CDK as an AgentCore Runtime.
    - Framework-agnostic orchestration
 
 2. **Neo4j MCP Docker Image**
-   - Official MCP server from [Docker Hub](https://hub.docker.com/mcp/server/neo4j/overview)
-   - Extended in AgentCore Runtime
+   - Pre-built MCP server from ECR
+   - Deployed in AgentCore Runtime
    - Provides MCP-Tools to query Neo4j
 
 3. **Custom Authorization Header**
@@ -53,33 +52,23 @@ deployed via CDK as an AgentCore Runtime.
 
 ## In-Depth Analysis
 
-### Docker Build Mechanism
+### Docker Image Configuration
 
-The sample uses a local [docker/Dockerfile](docker/Dockerfile) that configures the Neo4j MCP server for HTTP transport and deploys it via CDK ECR Assets:
-
-```dockerfile
-FROM mcp/neo4j:latest
-
-ENV NEO4J_MCP_HTTP_HOST=0.0.0.0
-ENV NEO4J_MCP_HTTP_PORT=8000
-ENV NEO4J_TRANSPORT_MODE=http
-
-EXPOSE 8000
-```
+The sample uses a pre-built Neo4j MCP Docker image from ECR that is already configured for HTTP transport:
 
 **How It Works:**
 
-1. CDK builds the Docker image from `docker/Dockerfile` and pushes it to ECR
-2. The `CfnRuntime` resource references the ECR image URI
-3. AgentCore runs the container with environment variables injected at deployment time
-4. MCP protocol communication is automatically configured over HTTP
-5. IAM permissions control access to the runtime
+1. The `CfnRuntime` resource references the pre-built ECR image URI from `cdk.json` context
+2. AgentCore runs the container with environment variables injected at deployment time
+3. MCP protocol communication is automatically configured over HTTP
+4. IAM permissions control access to the runtime
 
 **Benefits:**
 
-- Full control over the MCP server image
+- Uses a tested and versioned Neo4j MCP server image
 - Environment variables set at deploy time via CDK
 - No manual CLI configuration required — everything is infrastructure-as-code
+- Faster deployment without local Docker build
 
 ### Authentication Flow
 
@@ -112,9 +101,8 @@ For tools available see the [official Neo4j MCP server documentation](https://gi
 
 The CDK deployment creates:
 
-- **ECR Image Asset** — Docker image built from [docker/Dockerfile](docker/Dockerfile) and pushed to ECR
 - **IAM Role** for AgentCore Runtime with Bedrock, ECR, CloudWatch Logs, X-Ray, and workload identity permissions
-- **AgentCore `CfnRuntime`** — configured with MCP protocol, public network mode, IAM auth, and the custom header allowlist
+- **AgentCore `CfnRuntime`** — configured with MCP protocol, public network mode, IAM auth, and the custom header allowlist, using the pre-built ECR image
 
 ### Environment Variables
 
@@ -155,11 +143,12 @@ pip install -r requirements.txt
 
 ### Step 3: Configure Environment
 
-Neo4j uri and databse are supplied via CDK context. Default values are provided in [cdk.json](cdk.json):
+Neo4j MCP container URI, Neo4j uri and database are supplied via CDK context. Default values are provided in [cdk.json](cdk.json):
 
 ```json
 {
   "context": {
+    "neo4j_mcp_container_uri": "504028651370.dkr.ecr.us-east-1.amazonaws.com/development/neo4j/mcp:v0.1.7",
     "neo4j_uri": "neo4j+s://demo.neo4jlabs.com:7687",
     "neo4j_database": "companies"
   }
@@ -173,6 +162,8 @@ cdk deploy Neo4jMCPRuntimeStack \
   -c neo4j_uri=neo4j+s://your-instance:7687 \
   -c neo4j_database=neo4j
 ```
+
+**Note:** The `neo4j_mcp_container_uri` points to a pre-built Neo4j MCP image. Ensure you have access to this ECR repository or update it to point to your own Neo4j MCP image.
 
 ### Step 4: Deploy Infrastructure
 
@@ -189,14 +180,13 @@ cdk deploy Neo4jMCPRuntimeStack
 **Expected Output:**
 The deployment will output:
 
-- `Neo4jMcpImageUri` — ECR URI of the built Docker image
 - `Neo4jMcpRuntimeArn` — ARN of the deployed AgentCore Runtime
 - `AgentRuntimeRoleArn` — ARN of the IAM Role for the runtime
 
 The CDK stack automatically:
-- Builds the Docker image from `docker/Dockerfile` and pushes it to ECR
 - Creates the IAM role with the required permissions
 - Creates and configures the `CfnRuntime` with MCP protocol, public access, and IAM auth
+- References the pre-built Neo4j MCP Docker image from ECR
 
 ### Step 5: Test the Runtime
 
@@ -213,7 +203,7 @@ neo4j_password = "companies"
 ### Step 6: Clean Up
 
 ```bash
-# Destroy the CDK stack (removes the Runtime, IAM role, and ECR image)
+# Destroy the CDK stack (removes the Runtime and IAM role)
 cdk destroy Neo4jMCPRuntimeStack
 ```
 

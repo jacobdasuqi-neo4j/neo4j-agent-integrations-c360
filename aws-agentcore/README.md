@@ -26,14 +26,14 @@ All samples are deployed with AWS CDK and use the public Neo4j companies demo da
 
 | # | Sample | Pattern | Auth Model | Deployment |
 |---|--------|---------|------------|------------|
-| 1 | [MCP Runtime — Docker](samples/1-mcp-runtime-docker/) | AgentCore Runtime with custom Docker image | IAM + per-request Neo4j credentials via custom header | ECR image built & pushed by CDK |
+| 1 | [MCP Runtime — Docker](samples/1-mcp-runtime-docker/) | AgentCore Runtime with pre-built Neo4j MCP Docker image | IAM + per-request Neo4j credentials via custom header | Pre-built ECR image referenced in CDK |
 | 2 | [Gateway — External MCP](samples/2-gateway-external-mcp/) | AgentCore Gateway proxying to Fargate-hosted MCP | OAuth 2.0 → Lambda Interceptor → Basic Auth | ECS Fargate + ALB + custom domain |
 | 3 | [MCP Runtime — Neo4j Python SDK](samples/3-mcp-runtime-neo4j-sdk/) | AgentCore Runtime with code-based Python MCP server | IAM + Secrets Manager | Python bundle uploaded to S3 by CDK |
 
 ### Sample 1: MCP Runtime — Docker
 
-Deploys the official [Neo4j MCP Docker image](https://hub.docker.com/mcp/server/neo4j/overview) as an AgentCore Runtime.
-The Docker image is extended locally, built and pushed to ECR by CDK, and run as a managed runtime.
+Deploys a pre-built Neo4j MCP Docker image from ECR as an AgentCore Runtime.
+The Docker image is referenced in CDK configuration and run as a managed runtime.
 Neo4j credentials are passed per-request via the `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization` header.
 
 → **[Full documentation](samples/1-mcp-runtime-docker/README.md)**

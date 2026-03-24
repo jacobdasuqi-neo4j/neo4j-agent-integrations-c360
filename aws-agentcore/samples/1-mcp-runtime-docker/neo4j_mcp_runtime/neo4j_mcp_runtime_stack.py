@@ -4,7 +4,6 @@ from aws_cdk import (
     aws_bedrockagentcore as bedrockagentcore,
     aws_iam as iam,
 )
-from aws_cdk import aws_ecr_assets as ecr_assets
 from constructs import Construct
 
 
@@ -13,22 +12,14 @@ class Neo4jMCPRuntimeStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 1. Build the adjusted neo4j mcp docker image
-        mcp_image_asset = ecr_assets.DockerImageAsset(
-            self, "Neo4jMcpImage",
-            # AgentCore requires runtimes to have arm64 platform
-            platform=ecr_assets.Platform.LINUX_ARM64,
-            directory="docker",
-        )
-
-        # 2. create a Policy for the AgentCore runtime
+        # 1. create a Policy for the AgentCore runtime
         # taken from https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-execution
         runtime_policy = iam.PolicyDocument(
             statements=[
                 iam.PolicyStatement(
                     sid="ECRImageAccess",
                     effect=iam.Effect.ALLOW,
-                    actions=["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
+                    actions=["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:GetAuthorizationToken"],
                     resources=[f"arn:aws:ecr:{self.region}:{self.account}:repository/*"],
                 ),
                 iam.PolicyStatement(
@@ -88,7 +79,7 @@ class Neo4jMCPRuntimeStack(Stack):
             ]
         )
 
-        # 3. Create IAM Role for AgentCore Runtime using the previously created policy
+        # 2. Create IAM Role for AgentCore Runtime using the previously created policy
         runtime_role = iam.Role(
             self, "AgentCoreRuntimeRole",
             assumed_by=iam.ServicePrincipal("bedrock-agentcore.amazonaws.com"),
@@ -100,10 +91,11 @@ class Neo4jMCPRuntimeStack(Stack):
         # custom header. Such custom headers must be prefixed by `X-Amzn-Bedrock-AgentCore-Runtime-Custom-`
         auth_header_name = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization"
 
+        container_uri = self.node.try_get_context("neo4j_mcp_container_uri")
         neo4j_uri = self.node.try_get_context("neo4j_uri")
         neo4j_database = self.node.try_get_context("neo4j_database")
 
-        # 4. Create the Runtime for our MCP server
+        # 3. Create the Runtime for our MCP server
         mcp_runtime = bedrockagentcore.CfnRuntime(
             self, "Neo4jMcpRuntime",
             agent_runtime_name="Neo4jMcpRuntime",
@@ -119,7 +111,7 @@ class Neo4jMCPRuntimeStack(Stack):
             role_arn=runtime_role.role_arn,
             agent_runtime_artifact=bedrockagentcore.CfnRuntime.AgentRuntimeArtifactProperty(
                 container_configuration=bedrockagentcore.CfnRuntime.ContainerConfigurationProperty(
-                    container_uri=mcp_image_asset.image_uri
+                    container_uri=container_uri
                 )
             ),
             protocol_configuration="MCP",
@@ -135,12 +127,7 @@ class Neo4jMCPRuntimeStack(Stack):
         # Ensure the runtime is created only after the IAM role is fully provisioned
         mcp_runtime.node.add_dependency(runtime_role)
 
-        # 5. Outputs
-        CfnOutput(
-            self, "Neo4jMcpImageUri",
-            value=mcp_image_asset.image_uri,
-            description="The URI of the docker image",
-        )
+        # 4. Outputs
 
         CfnOutput(
             self, "Neo4jMcpRuntimeArn",
