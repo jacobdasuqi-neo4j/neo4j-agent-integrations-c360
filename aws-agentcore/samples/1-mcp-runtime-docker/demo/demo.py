@@ -150,7 +150,10 @@ def main():
             do_agent_query(mcp_client, query)
 
     finally:
-        mcp_client.stop(None, None, None)
+        try:
+            mcp_client.stop(None, None, None)
+        except Exception:
+            pass
         print("\nMCP client stopped.")
 
 
