@@ -98,12 +98,11 @@ def do_call_tool(mcp_client):
     print(result)
 
 
-def do_agent_query(mcp_client):
+def do_agent_query(mcp_client, query):
     """Run a natural language query via the Strands Agent."""
     from strands import Agent
 
     print("\n=== Running Agent Query ===\n")
-    query = "Give me the name of 3 Companies"
     print(f"  Query: {query}\n")
     agent = Agent(tools=[mcp_client])
     response = agent(query)
@@ -120,6 +119,11 @@ def main():
         default="all",
         help="Demo mode: list tools, call a tool, run agent, or all (default: all)",
     )
+    parser.add_argument(
+        "--query",
+        default=None,
+        help="Natural language query for agent mode (prompted interactively if not provided)",
+    )
     args = parser.parse_args()
 
     arn, username, password, region = load_config()
@@ -130,7 +134,8 @@ def main():
     mcp_client = create_mcp_client(arn, username, password, region)
 
     try:
-        mcp_client.start()
+        if args.mode in ("list", "call", "all"):
+            mcp_client.start()
 
         if args.mode in ("list", "all"):
             do_list_tools(mcp_client)
@@ -139,7 +144,10 @@ def main():
             do_call_tool(mcp_client)
 
         if args.mode in ("agent", "all"):
-            do_agent_query(mcp_client)
+            if args.mode == "all":
+                mcp_client.stop(None, None, None)
+            query = args.query or input("Enter your query: ")
+            do_agent_query(mcp_client, query)
 
     finally:
         mcp_client.stop(None, None, None)
