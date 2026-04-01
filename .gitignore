@@ -1,4 +1,5 @@
 .DS_Store
+.mcp.json
 .idea
 plan.md
 mcp-auth-support.md
@@ -9,3 +10,6 @@ CLAUDE.md
 **/cdk.context.json
 .env
 __pycache__
+.venv
+.mcp-credentials.json
+.bedrock_agentcore
