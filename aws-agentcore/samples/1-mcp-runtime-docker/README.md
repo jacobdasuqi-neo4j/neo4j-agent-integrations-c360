@@ -5,25 +5,29 @@
 This sample demonstrates how to deploy an AWS AgentCore Runtime with a Neo4j MCP Docker image.
 The Neo4j MCP server is configured for HTTP transport and deployed via CDK as an AgentCore Runtime.
 
-You can either use a **pre-built image from ECR** for fast deployment, or **build the Docker image locally** from the included `docker/Dockerfile`.
+You can either use a **pre-built image from the AWS Marketplace** for fast deployment, or **build the Docker image locally** from the included `docker/Dockerfile`.
 
 **Key Features:**
 
-- **Pre-built or Local Docker Image**: Use a pre-built Neo4j MCP Docker image from ECR, or build locally from `docker/Dockerfile`
+- **Pre-built or Local Docker Image**: Use a pre-built Neo4j MCP Docker image from the AWS Marketplace, or build locally from `docker/Dockerfile`
 - **IAM Authentication**: Uses AWS IAM permissions for secure, public runtime access
 - **Header-Based Authentication**: Neo4j-Credentials are provided securely via a custom `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization` header
 - **Serverless Deployment**: Fully managed AgentCore runtime
 - **CDK Infrastructure**: Complete infrastructure-as-code deployment — no manual CLI configuration required
 
-## Quick Start
-
-### Prerequisites
+## Prerequisites
 
 - AWS Account with Bedrock and AgentCore access
 - AWS CLI configured with appropriate credentials
 - AWS CDK installed (`npm install -g aws-cdk`)
 - [uv](https://docs.astral.sh/uv/) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - Docker installed and running
+
+---
+
+## Section 1: Deploy from the AWS Marketplace (Recommended)
+
+The fastest path to deployment. Uses a pre-built Neo4j MCP container image from the AWS Marketplace — no local Docker build required.
 
 ### Clone and Install
 
@@ -34,20 +38,23 @@ uv sync
 cp .env.sample .env
 ```
 
-### Option A: Deploy with Pre-built ECR Image
+### Get the Container Image URI
 
-The fastest path. Set `NEO4J_MCP_CONTAINER_URI` in your `.env` to point to a pre-built image:
+1. Go to the [AWS Marketplace](https://aws.amazon.com/marketplace) and search for **"Neo4j MCP Server"**
+2. Subscribe to the listing and follow the instructions to get the container image URI
+
+### Configure Environment
+
+Set `NEO4J_MCP_CONTAINER_URI` in your `.env` to the image URI from the Marketplace:
 
 ```bash
 # .env
 NEO4J_URI=neo4j+s://demo.neo4jlabs.com:7687
 NEO4J_DATABASE=companies
-NEO4J_MCP_CONTAINER_URI=<your-ecr-image-uri>
+NEO4J_MCP_CONTAINER_URI=<marketplace-container-image-uri>
 ```
 
-See the [AWS Marketplace](https://aws.amazon.com/marketplace) for available pre-built Neo4j MCP container images.
-
-Then deploy:
+### Deploy
 
 ```bash
 ./deploy.sh
@@ -55,27 +62,9 @@ Then deploy:
 
 CDK will reference the pre-built image directly — no local Docker build required.
 
-### Option B: Build and Deploy a Local Docker Image
-
-If you don't have access to the ECR image, or want to customize the container, omit `NEO4J_MCP_CONTAINER_URI` from `.env`:
-
-```bash
-# .env
-NEO4J_URI=neo4j+s://demo.neo4jlabs.com:7687
-NEO4J_DATABASE=companies
-```
-
-Then deploy:
-
-```bash
-./deploy.sh
-```
-
-CDK will build the Docker image locally from `docker/Dockerfile`, push it to ECR, and deploy it as an AgentCore Runtime.
-
 ### Test the Runtime
 
-#### Option A: Standalone Demo Script
+#### Standalone Demo Script
 
 After deployment, `deploy.sh` automatically queries the CloudFormation stack outputs and writes `AGENTCORE_RUNTIME_ARN` to `.env`, so the demo client can connect without manual copy-paste. Run the demo:
 
@@ -93,7 +82,78 @@ uv run python demo.py --mode call    # call get-schema
 uv run python demo.py --mode agent   # run agent query (requires Bedrock model access)
 ```
 
-#### Option B: Jupyter Notebook
+#### Jupyter Notebook
+
+Open [demo.ipynb](demo.ipynb) and set the `arn` variable to the `Neo4jMcpRuntimeArn` from the CDK output, then run the notebook.
+It uses `mcp_proxy_for_aws` and `strands` to connect via IAM-signed requests and the `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization`
+header for Neo4j credentials.
+
+```python
+arn = "<Neo4jMcpRuntimeArn from CDK output>"
+neo4j_user = "companies"
+neo4j_password = "companies"
+```
+
+### Clean Up
+
+```bash
+cdk destroy Neo4jMCPRuntimeStack
+```
+
+---
+
+## Section 2: Build and Deploy a Local Docker Image
+
+If you want to customize the container or don't have access to the Marketplace image, you can build the Docker image locally from the included `docker/Dockerfile`.
+
+### Clone and Install
+
+```bash
+git clone https://github.com/neo4j-labs/neo4j-agent-integrations.git
+cd neo4j-agent-integrations/aws-agentcore/samples/1-mcp-runtime-docker
+uv sync
+cp .env.sample .env
+```
+
+### Configure Environment
+
+Omit `NEO4J_MCP_CONTAINER_URI` from your `.env` — CDK will build the image locally:
+
+```bash
+# .env
+NEO4J_URI=neo4j+s://demo.neo4jlabs.com:7687
+NEO4J_DATABASE=companies
+```
+
+### Deploy
+
+```bash
+./deploy.sh
+```
+
+CDK will build the Docker image locally from `docker/Dockerfile`, push it to ECR, and deploy it as an AgentCore Runtime.
+
+### Test the Runtime
+
+#### Standalone Demo Script
+
+After deployment, `deploy.sh` automatically queries the CloudFormation stack outputs and writes `AGENTCORE_RUNTIME_ARN` to `.env`, so the demo client can connect without manual copy-paste. Run the demo:
+
+```bash
+cd demo
+uv sync
+uv run python demo.py
+```
+
+This lists MCP tools, calls `get-schema`, and runs an agent query. Use `--mode` to run specific steps:
+
+```bash
+uv run python demo.py --mode list    # list tools only
+uv run python demo.py --mode call    # call get-schema
+uv run python demo.py --mode agent   # run agent query (requires Bedrock model access)
+```
+
+#### Jupyter Notebook
 
 Open [demo.ipynb](demo.ipynb) and set the `arn` variable to the `Neo4jMcpRuntimeArn` from the CDK output, then run the notebook.
 It uses `mcp_proxy_for_aws` and `strands` to connect via IAM-signed requests and the `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Authorization`
