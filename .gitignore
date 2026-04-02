@@ -13,3 +13,5 @@ __pycache__
 .venv
 .mcp-credentials.json
 .bedrock_agentcore
+_antora-staging/
+_generated/
