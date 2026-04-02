@@ -131,6 +131,9 @@ class Neo4jMCPRuntimeStack(Stack):
             environment_variables={
                 "NEO4J_URI": neo4j_uri,
                 "NEO4J_DATABASE": neo4j_database,
+                "NEO4J_TRANSPORT_MODE": "http",
+                "NEO4J_MCP_HTTP_HOST": "0.0.0.0",
+                "NEO4J_MCP_HTTP_PORT": "8000",
                 "NEO4J_READ_ONLY": "true",
                 "NEO4J_LOG_FORMAT": "text",
                 "NEO4J_HTTP_AUTH_HEADER_NAME": auth_header_name,

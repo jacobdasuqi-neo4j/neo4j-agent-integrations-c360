@@ -143,10 +143,10 @@ def main():
         if args.mode in ("call", "all"):
             do_call_tool(mcp_client)
 
-        if args.mode in ("agent", "all"):
-            if args.mode == "all":
+        if args.mode in ("call", "agent", "all"):
+            if args.mode in ("call", "all"):
                 mcp_client.stop(None, None, None)
-            query = args.query or input("Enter your query: ")
+            query = args.query or input("\nEnter your query: ")
             do_agent_query(mcp_client, query)
 
     finally:
