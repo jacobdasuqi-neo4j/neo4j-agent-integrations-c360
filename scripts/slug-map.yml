@@ -121,6 +121,15 @@ integrations:
     category: "Cloud & Enterprise Platforms"
     nav_label: "Databricks Agent Bricks"
     thin: false
+    sub_pages:
+      - src: samples/1-uc-functions/README.md
+        slug: databricks-uc-functions
+        title: "Databricks Agent Bricks — UC Functions"
+        nav_label: "UC Functions"
+      - src: samples/2-custom-mcp-server/README.md
+        slug: databricks-custom-mcp
+        title: "Databricks Agent Bricks — Custom MCP Server"
+        nav_label: "Custom MCP Server"
 
   - folder: google-adk
     slug: google-adk
