@@ -130,6 +130,10 @@ integrations:
         slug: databricks-custom-mcp
         title: "Databricks Agent Bricks — Custom MCP Server"
         nav_label: "Custom MCP Server"
+      - src: samples/3-official-mcp-server/README.md
+        slug: databricks-official-mcp
+        title: "Databricks Agent Bricks — Official MCP Server"
+        nav_label: "Official MCP Server"
 
   - folder: google-adk
     slug: google-adk
@@ -148,6 +152,19 @@ integrations:
     category: "Cloud & Enterprise Platforms"
     nav_label: "Google Gemini Enterprise"
     thin: false
+    sub_pages:
+      - src: 1-a2a-mcp-wrapper/README.md
+        slug: google-gemini-a2a-mcp-wrapper
+        title: "Google Gemini Enterprise — A2A MCP Wrapper"
+        nav_label: "A2A MCP Wrapper"
+      - src: 2-a2a-direct-service/README.md
+        slug: google-gemini-a2a-direct
+        title: "Google Gemini Enterprise — A2A Direct Service"
+        nav_label: "A2A Direct Service"
+      - src: 2-a2a-ge-marketplace/README.md
+        slug: google-gemini-ge-marketplace
+        title: "Google Gemini Enterprise — GE Marketplace"
+        nav_label: "GE Marketplace"
 
   - folder: salesforce-agentforce
     slug: salesforce-agentforce
