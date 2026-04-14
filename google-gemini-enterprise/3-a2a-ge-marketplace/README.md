@@ -1,5 +1,7 @@
 # Neo4j Agent-as-a-Service (AaaS) for Gemini Enterprise
 
+**👋 ARE YOU A CUSTOMER?** > If you are an IT Admin or user looking to install and configure this agent for your organization, follow our **[Customer Setup Guide](customer_guide.md)**.
+
 This repository contains an enterprise-grade AI Agent that bridges organization-specific Neo4j Graph Databases with Google Gemini Enterprise. Built on the Agent-to-Agent (A2A) protocol and the Google Agent Development Kit (ADK), it enables secure, natural language querying of complex graph data at scale.
 
 Designed natively as an **Agent-as-a-Service (AaaS)** for the Google Cloud Marketplace, the architecture provides robust multi-tenant isolation, automated billing lifecycle management, and verified federated identity.
