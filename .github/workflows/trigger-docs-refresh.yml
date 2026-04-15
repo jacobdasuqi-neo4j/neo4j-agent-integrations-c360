@@ -17,7 +17,7 @@ jobs:
       - name: Dispatch docs-refresh build
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.DOCS_REFRESH_DISPATCH_TOKEN }}
+          github-token: ${{ secrets.DOCS_REFRESH_TOKEN }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'neo4j-documentation',
