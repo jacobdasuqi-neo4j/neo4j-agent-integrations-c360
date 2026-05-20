@@ -216,8 +216,29 @@ def convert_md_to_adoc(md_text, entry, folder='', path_xref=None):
             if in_table:
                 flush_table()
             in_code = True
-            code_fence = fence_match.group(2)  # just the fence chars, e.g. ```
+            code_fence = fence_match.group(2)
             lang = fence_match.group(3).strip()
+            if lang.lower() == 'mermaid':
+                # Collect diagram source, render via Kroki image URL
+                i += 1
+                diagram_lines = []
+                while i < len(lines):
+                    stripped = lines[i].strip()
+                    if stripped == code_fence or (stripped.startswith(code_fence) and not stripped[len(code_fence):].strip()):
+                        i += 1
+                        break
+                    diagram_lines.append(lines[i])
+                    i += 1
+                import zlib, base64 as _b64
+                diagram_src = '\n'.join(diagram_lines)
+                encoded = _b64.urlsafe_b64encode(
+                    zlib.compress(diagram_src.encode('utf-8'), 9)
+                ).decode('utf-8')
+                out.append(f'image::https://kroki.io/mermaid/svg/{encoded}[Diagram,align="center"]')
+                out.append('')
+                in_code = False
+                code_fence = ''
+                continue
             if lang:
                 out.append(f'[source,{lang}]')
             else:
