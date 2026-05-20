@@ -391,6 +391,11 @@ def convert_md_to_adoc(md_text, entry, folder='', path_xref=None):
     tags = entry.get('tags', '')
     product = entry.get('product', '')
     category_attr = 'genai-ecosystem'
+    source_file = entry.get('_source_file', '')
+    edit_url = (
+        f"https://github.com/neo4j-labs/neo4j-agent-integrations/edit/main/{source_file}"
+        if source_file else ''
+    )
 
     frontmatter = f"""= {title}
 :slug: {slug}
@@ -400,6 +405,7 @@ def convert_md_to_adoc(md_text, entry, folder='', path_xref=None):
 :neo4j-versions: 5.x
 :page-pagination:
 :page-product: {product}
+:page-edit-url: {edit_url}
 :attribute-missing: skip
 
 """
@@ -458,6 +464,7 @@ def cmd_convert(args, integrations_map):
             continue
 
         md_text = readme.read_text(encoding='utf-8')
+        entry['_source_file'] = f"{entry['folder']}/README.md"
         adoc = convert_md_to_adoc(md_text, entry,
                                    folder=entry['folder'], path_xref=path_xref)
         out_path = PAGES_OUT / f"{entry['slug']}.adoc"
@@ -480,6 +487,7 @@ def cmd_convert(args, integrations_map):
                 'slug': sub['slug'],
                 'tags': entry.get('tags', ''),
                 'product': entry.get('product', ''),
+                '_source_file': f"{entry['folder']}/{sub['src'].lstrip('/')}",
             }
             sub_md = sub_src.read_text(encoding='utf-8')
             sub_adoc = convert_md_to_adoc(sub_md, sub_entry,
