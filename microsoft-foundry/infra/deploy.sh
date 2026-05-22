@@ -8,11 +8,13 @@ command -v azd >/dev/null || {
   exit 1
 }
 
-# Fail fast if azd isn't authenticated. azd keeps its own token cache separate
-# from `az`, so `az login` alone isn't enough — and without this check, `azd
-# up` can hang silently waiting for an interactive token refresh.
-if ! azd auth login --check-status >/dev/null 2>&1; then
-  echo "Not signed in to azd. Run: azd auth login" >&2
+# Fail fast if neither `az` nor `azd` is authenticated. Without this check,
+# `azd up` can hang silently waiting for an interactive token refresh.
+# Either tool being signed in is enough: with `azd config set
+# auth.useAzCliAuth true` (recommended in the Quick Start), azd reuses `az`'s
+# session; otherwise azd needs its own `azd auth login`.
+if ! az account show >/dev/null 2>&1 && ! azd auth login --check-status >/dev/null 2>&1; then
+  echo "Not signed in. Run: az login (and 'azd auth login' if azd uses standalone auth)" >&2
   exit 1
 fi
 
@@ -66,6 +68,15 @@ read_kv_file() {
 read_kv_file "$shared_env"
 read_kv_file ".env"
 
+# Default to an azd env called "demo" so `azd up` doesn't prompt on a fresh
+# shell (e.g. Azure Cloud Shell). Must run before any `azd env set` below.
+# The env name is an azd-local identifier and becomes the suffix on every
+# resource (rg-foundry-neo4j-demo, ...). Run `azd env new <name>` before
+# deploy.sh to use a different name.
+if [ ! -d .azure ] || [ -z "$(ls -A .azure 2>/dev/null)" ]; then
+  azd env new demo >/dev/null
+fi
+
 # Forward local infra .env values into the azd environment so deployment
 # parameters reach the Bicep. azd up itself prompts for AZURE_ENV_NAME, the
 # subscription, and AZURE_LOCATION.
@@ -87,14 +98,6 @@ azd_get() {
     printf '%s' "$out"
   fi
 }
-
-# Default to an azd env called "demo" so `azd up` doesn't prompt on a fresh
-# shell (e.g. Azure Cloud Shell). The env name is an azd-local identifier and
-# becomes the suffix on every resource (rg-foundry-neo4j-demo, ...). Run
-# `azd env new <name>` before deploy.sh to use a different name.
-if [ ! -d .azure ] || [ -z "$(ls -A .azure 2>/dev/null)" ]; then
-  azd env new demo >/dev/null
-fi
 
 # Default AZURE_LOCATION to swedencentral if not already set. Sweden Central is
 # the only region in our supported list that ALSO supports Foundry hosted
