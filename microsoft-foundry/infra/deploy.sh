@@ -8,6 +8,14 @@ command -v azd >/dev/null || {
   exit 1
 }
 
+# Fail fast if azd isn't authenticated. azd keeps its own token cache separate
+# from `az`, so `az login` alone isn't enough — and without this check, `azd
+# up` can hang silently waiting for an interactive token refresh.
+if ! azd auth login --check-status >/dev/null 2>&1; then
+  echo "Not signed in to azd. Run: azd auth login" >&2
+  exit 1
+fi
+
 shared_env="$(cd .. && pwd)/.env"
 
 # Demo defaults (match .env.sample). Overridden below by the existing shared
@@ -79,6 +87,14 @@ azd_get() {
     printf '%s' "$out"
   fi
 }
+
+# Default to an azd env called "demo" so `azd up` doesn't prompt on a fresh
+# shell (e.g. Azure Cloud Shell). The env name is an azd-local identifier and
+# becomes the suffix on every resource (rg-foundry-neo4j-demo, ...). Run
+# `azd env new <name>` before deploy.sh to use a different name.
+if [ ! -d .azure ] || [ -z "$(ls -A .azure 2>/dev/null)" ]; then
+  azd env new demo >/dev/null
+fi
 
 # Default AZURE_LOCATION to swedencentral if not already set. Sweden Central is
 # the only region in our supported list that ALSO supports Foundry hosted
