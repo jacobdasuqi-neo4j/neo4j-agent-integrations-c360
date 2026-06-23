@@ -23,23 +23,23 @@ The MCP endpoint is shared infrastructure. Deploy it once from [`../microsoft-fo
 Deploy the shared Neo4j MCP server:
 
 ```bash
-cd ../microsoft-foundry/infra
+cd microsoft-foundry/infra
 ./deploy.sh
 ./test-mcp.sh "$(azd env get-value mcpEndpoint)"
 ```
 
 The deployment writes `../microsoft-foundry/.env`. Use `NEO4J_MCP_ENDPOINT` as the Copilot Studio MCP server URL.
 
-For the default public `companies` demo graph, the MCP authentication header is:
+For the default public `companies` demo graph, the Copilot Studio **Header value** for `Authorization` is:
 
-```text
-Authorization: Basic Y29tcGFuaWVzOmNvbXBhbmllcw==
-```
+~~~text
+Basic Y29tcGFuaWVzOmNvbXBhbmllcw==
+~~~
 
 Generate the value yourself:
 
 ```bash
-printf '%s:%s' companies companies | base64
+printf '%s:%s' companies companies | base64 | tr -d '\n'
 ```
 
 For a real Neo4j database, replace the demo credentials with your own Basic auth value, or use `Bearer <token>` if your Neo4j deployment is configured for SSO or OIDC.
@@ -96,7 +96,7 @@ entities, bullet lists for attributes of a single entity. Connect the dots
 
 Call get-schema once per conversation with get-schema({
   "properties": {}
-})). 
+}).
 You MUST call read-cypher before any
 factual claim about a company, person, industry, location, or article.
 get-schema alone is not data. Answer only from read-cypher rows. Never use
