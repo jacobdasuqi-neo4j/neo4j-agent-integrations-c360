@@ -12,39 +12,22 @@ Copilot Studio agents often need to answer relationship questions: which compani
 ```mermaid
 flowchart LR
     user["User"] --> agent["Copilot Studio agent<br/>(model + tools)"]
-    agent -->|MCP tool| mcp["Neo4j MCP server<br/>Azure Container Apps"]
-    mcp --> neo4j[("Neo4j Aura<br/>or self-managed")]
+    agent -->|"Option A · MCP tool"| self["Self-hosted MCP<br/>Azure Container Apps"]
+    agent -->|"Option B · MCP tool"| aura["Aura-hosted MCP<br/>(built into Aura)"]
+    self --> neo4j[("Neo4j Aura<br/>or self-managed")]
+    aura --> auradb[("Neo4j Aura instance")]
 ```
 
-The MCP endpoint is shared infrastructure. Deploy it once from [`../microsoft-foundry/infra`](../microsoft-foundry/infra/), then attach the same server from Copilot Studio, Microsoft Foundry, Microsoft Agent Framework, or any other MCP client.
+Two ways to attach the Neo4j MCP server as a tool — pick one:
 
-## Quick Start
+- **[Option A — Self-hosted on Azure](#option-a-self-hosted-mcp)** — deploy the MCP server to your own subscription. Works with the public `companies` demo graph.
+- **[Option B — Aura-hosted](#option-b-neo4j-aura-hosted-mcp)** — use the MCP endpoint built into your Neo4j Aura instance. No infrastructure.
 
-Deploy the shared Neo4j MCP server:
+You'll need a [Microsoft Copilot Studio](https://copilotstudio.microsoft.com) environment (a trial works) either way.
 
-```bash
-cd microsoft-foundry/infra
-./deploy.sh
-./test-mcp.sh "$(azd env get-value mcpEndpoint)"
-```
+## Option A: Self-hosted MCP
 
-The deployment writes `../microsoft-foundry/.env`. Use `NEO4J_MCP_ENDPOINT` as the Copilot Studio MCP server URL.
-
-For the default public `companies` demo graph, the Copilot Studio **Header value** for `Authorization` is:
-
-~~~text
-Basic Y29tcGFuaWVzOmNvbXBhbmllcw==
-~~~
-
-Generate the value yourself:
-
-```bash
-printf '%s:%s' companies companies | base64 | tr -d '\n'
-```
-
-For a real Neo4j database, replace the demo credentials with your own Basic auth value, or use `Bearer <token>` if your Neo4j deployment is configured for SSO or OIDC.
-
-## Copilot Studio Walkthrough
+Deploy the Neo4j MCP server to your Azure subscription following [`../microsoft-foundry/infra`](../microsoft-foundry/infra/). It writes `../microsoft-foundry/.env` — use **`NEO4J_MCP_ENDPOINT`** as the Copilot Studio **Server URL** in [Step 4](#4-create-the-mcp-server). For the public `companies` demo graph, set the connection's **Header name** to `Authorization` and its **Header value** to `Basic Y29tcGFuaWVzOmNvbXBhbmllcw==` (generate your own with `printf '%s:%s' <user> <pass> | base64 | tr -d '\n'`, or use a `Bearer <token>` value for SSO/OIDC).
 
 ### 1. Create a blank agent
 
@@ -94,10 +77,8 @@ entities, bullet lists for attributes of a single entity. Connect the dots
 
 ## Grounding
 
-Call get-schema once per conversation with get-schema({
-  "properties": {}
-}).
-You MUST call read-cypher before any
+Call get-schema once per conversation (pass an empty properties object:
+get-schema({"properties": {}})). You MUST call read-cypher before any
 factual claim about a company, person, industry, location, or article.
 get-schema alone is not data. Answer only from read-cypher rows. Never use
 prior knowledge. If read-cypher returns nothing, reply "the graph doesn't
@@ -188,9 +169,36 @@ Return to the agent test panel and retry the same prompt.
 <img src="images/copilot-studio-15-successful-test.png" alt="Successful test run showing get-schema and read-cypher tool calls" width="960">
 
 
+## Option B: Neo4j Aura-hosted MCP
+
+[Neo4j Aura](https://neo4j.com/docs/mcp/current/mcp-for-aura/) ships a **built-in MCP endpoint for every instance** — nothing to deploy, no Azure. You connect Copilot Studio straight to your Aura database over OAuth.
+
+It runs against your own Aura instance, so the public `companies` demo graph isn't available here. Starting fresh? [Create an Aura instance](https://neo4j.com/docs/aura/getting-started/create-instance/) (the Free tier works) and pick the built-in **Movies** sample dataset so you have data to query.
+
+### Enable and connect
+
+1. Turn on the MCP server for your Aura instance and copy its endpoint — see the [Aura MCP documentation](https://neo4j.com/docs/mcp/current/mcp-for-aura/). The URL looks like `https://<INSTANCE_ID>.mcp-instances.neo4j.io`.
+2. Follow the [Option A steps](#option-a-self-hosted-mcp) as-is — **the only difference is Step 4 (Create the MCP server)**. Use these values instead:
+
+   | Field | Value |
+   | --- | --- |
+   | **Server name** | `neo4j-aura-mcp` |
+   | **Server description** | `Neo4j Aura hosted MCP connecting your instance` |
+   | **Server URL** | `https://<INSTANCE_ID>.mcp-instances.neo4j.io` |
+   | **Authentication** | **OAuth 2.0** |
+   | **Type** | **Dynamic discovery** |
+
+   <img src="images/copilot-studio-16-aura-oauth.png" alt="Add a Model Context Protocol server form for the Aura-hosted MCP with OAuth 2.0 Dynamic discovery selected" width="640">
+
+   Dynamic discovery relies on the server exposing a valid `registration_endpoint` in its OpenID configuration — the Aura-hosted MCP does, so no client secret or header is required. Create the server, then complete the OAuth sign-in when Copilot Studio prompts on the first tool call.
+
+Everything else — adding the tool, verifying the connection, and testing — is identical to Option A. Adjust the agent instructions and the test prompt to match your own graph (for the Movies sample dataset, try *"Which actors have worked with the most directors?"*).
+
+
 ## References
 
 - [Microsoft Copilot Studio](https://www.microsoft.com/microsoft-copilot/microsoft-copilot-studio)
 - [Neo4j MCP server](https://github.com/neo4j/mcp)
 - [Neo4j MCP configuration](https://neo4j.com/docs/mcp/current/configuration/)
+- [Neo4j Aura-hosted MCP](https://neo4j.com/docs/mcp/current/mcp-for-aura/)
 - [Shared Azure MCP deployment](../microsoft-foundry/infra/)
