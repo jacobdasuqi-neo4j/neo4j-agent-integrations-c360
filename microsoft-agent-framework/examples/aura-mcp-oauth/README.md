@@ -20,7 +20,8 @@ MCP 401 → resource metadata → authorization server
 ## Bring your own Aura instance
 
 The sign-in is a real Neo4j Aura account (email / SSO), so the agent connects to
-**your** instance — the same model as Copilot Studio's Aura option. Starting
+**your** instance — the same model as the
+[Copilot Studio Aura option](../../../microsoft-copilot-studio/). Starting
 fresh? [Create a free Aura instance](https://neo4j.com/docs/aura/getting-started/create-instance/),
 choose the built-in **Movies** sample dataset, and
 [enable its MCP endpoint](https://neo4j.com/docs/mcp/current/mcp-for-aura/). (The
@@ -32,7 +33,8 @@ The script uses [uv](https://docs.astral.sh/uv/) with inline dependencies — no
 virtualenv to manage.
 
 ```bash
-# Foundry chat model (project endpoint + deployment + tenant)
+# Source the shared Foundry env (project endpoint, deployment, tenant) written
+# by microsoft-foundry/infra/deploy.sh — the leading `.` loads it into this shell.
 . ../../../microsoft-foundry/.env
 
 # Your Aura instance's MCP endpoint
@@ -44,6 +46,10 @@ uv run aura_mcp_oauth_agent.py
 The **first run opens your browser** to sign in to Aura and consent. The token
 is cached at `~/.neo4j-aura-mcp-oauth.json` (mode `600`), so later runs are
 non-interactive. Delete that file to force re-consent.
+
+> Because the initial sign-in is interactive, this is a **local / developer**
+> pattern — it isn't suitable for the unattended Foundry hosted-agent runtime,
+> which would need a non-interactive credential instead.
 
 Ask your own question and the agent calls `get-schema` then `read-cypher`
 against your graph:
