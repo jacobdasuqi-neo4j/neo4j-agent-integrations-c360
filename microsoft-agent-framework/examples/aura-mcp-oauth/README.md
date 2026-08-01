@@ -62,15 +62,3 @@ against your graph:
 ```bash
 QUESTION="Which actors have worked with the most directors?" uv run aura_mcp_oauth_agent.py
 ```
-
-## How it differs from the other examples
-
-| | Neo4j access | Auth |
-| --- | --- | --- |
-| [`../multi-agent`](../multi-agent/) | `neo4j` driver, direct Cypher | database user/password |
-| [`../foundry-hosted`](../foundry-hosted/) | same, packaged as a hosted agent | database user/password |
-| **this** | Aura-hosted **MCP** (`get-schema`, `read-cypher`) | **OAuth 2.0 DCR**, no credentials in code |
-
-The chat model still comes from the shared Foundry deployment
-([`microsoft-foundry/infra`](../../../microsoft-foundry/infra/)); only the graph
-connection changes.
