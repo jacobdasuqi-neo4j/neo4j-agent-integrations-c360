@@ -5,6 +5,7 @@
 .databricks/
 __pycache__/
 .idea/
+.vscode/
 .mcp.json
 plan.md
 mcp-auth-support.md
