@@ -28,10 +28,10 @@ to your own Aura instance. Create a free one with the built-in Movies sample
 dataset (https://neo4j.com/docs/aura/getting-started/create-instance/) and enable
 its MCP endpoint (https://neo4j.com/docs/mcp/current/mcp-for-aura/).
 
-Run it (uv reads the inline dependencies above):
+Run it (uv reads the inline dependencies above; the Foundry chat-model settings
+load automatically from microsoft-foundry/.env, written by deploy.sh):
 
     export NEO4J_AURA_MCP_URL="https://<INSTANCE_ID>.mcp-instances.neo4j.io/mcp"
-    . ../../../microsoft-foundry/.env      # Foundry chat model (project + deployment)
     uv run aura_mcp_oauth_agent.py
 """
 
@@ -42,6 +42,7 @@ import json
 import os
 import sys
 import threading
+import time
 import webbrowser
 from contextlib import AsyncExitStack
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -62,6 +63,13 @@ CALLBACK_HOST = "localhost"
 CALLBACK_PORT = 8765
 CALLBACK_PATH = "/callback"
 REDIRECT_URI = f"http://{CALLBACK_HOST}:{CALLBACK_PORT}{CALLBACK_PATH}"
+
+# How long to wait for the browser sign-in before giving up.
+CONSENT_TIMEOUT_SECONDS = 300
+
+# The shared Foundry env written by microsoft-foundry/infra/deploy.sh, located
+# relative to this file so `uv run` works from any directory.
+SHARED_ENV = Path(__file__).resolve().parents[3] / "microsoft-foundry" / ".env"
 
 INSTRUCTIONS = """You are a data analyst grounded in a Neo4j graph. You can only learn
 about the graph through the get-schema and read-cypher tools (both read-only) —
@@ -161,11 +169,12 @@ async def _callback_handler() -> tuple[str, str | None]:
     # Bind in this thread so a port-in-use error surfaces here instead of being
     # swallowed in the background thread (which would hang forever on the wait).
     server = HTTPServer((CALLBACK_HOST, CALLBACK_PORT), Handler)
-    server.timeout = 1  # let the loop re-check `done` even without traffic
+    server.timeout = 1  # let the loop re-check `done`/deadline even without traffic
 
     def serve() -> None:
+        deadline = time.monotonic() + CONSENT_TIMEOUT_SECONDS
         try:
-            while not done.is_set():
+            while not done.is_set() and time.monotonic() < deadline:
                 server.handle_request()
         finally:
             server.server_close()
@@ -174,7 +183,10 @@ async def _callback_handler() -> tuple[str, str | None]:
     if captured.get("error"):
         raise RuntimeError(f"OAuth sign-in failed: {captured['error']}")
     if not captured.get("code"):
-        raise RuntimeError("OAuth callback did not include an authorization code.")
+        raise RuntimeError(
+            f"No OAuth callback received within {CONSENT_TIMEOUT_SECONDS}s — "
+            "the sign-in wasn't completed."
+        )
     return captured["code"], captured.get("state")
 
 
@@ -196,7 +208,9 @@ def _build_oauth(mcp_url: str) -> OAuthClientProvider:
 
 
 async def main() -> None:
-    load_dotenv()
+    # Load the Foundry chat-model settings from the shared .env by path (so
+    # `uv run` works from any directory). Anything already exported wins.
+    load_dotenv(SHARED_ENV)
 
     mcp_url = os.environ.get("NEO4J_AURA_MCP_URL")
     project_endpoint = os.environ.get("FOUNDRY_PROJECT_ENDPOINT")
@@ -204,8 +218,9 @@ async def main() -> None:
     if not (mcp_url and project_endpoint and tenant_id):
         sys.exit(
             "Missing NEO4J_AURA_MCP_URL, FOUNDRY_PROJECT_ENDPOINT, or AZURE_TENANT_ID.\n"
-            "Set NEO4J_AURA_MCP_URL to your Aura MCP endpoint (…/mcp) and source the\n"
-            "shared microsoft-foundry/.env for the Foundry chat model."
+            "Set NEO4J_AURA_MCP_URL to your Aura MCP endpoint (…/mcp). The Foundry\n"
+            f"values come from {SHARED_ENV} — run microsoft-foundry/infra/deploy.sh\n"
+            "first, or export them yourself."
         )
 
     chat_client = FoundryChatClient(

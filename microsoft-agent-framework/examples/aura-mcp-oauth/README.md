@@ -33,11 +33,9 @@ The script uses [uv](https://docs.astral.sh/uv/) with inline dependencies — no
 virtualenv to manage.
 
 ```bash
-# Source the shared Foundry env (project endpoint, deployment, tenant) written
-# by microsoft-foundry/infra/deploy.sh — the leading `.` loads it into this shell.
-. ../../../microsoft-foundry/.env
-
-# Your Aura instance's MCP endpoint
+# Point at your Aura instance's MCP endpoint. The Foundry chat-model settings
+# (project endpoint, deployment, tenant) load automatically from
+# ../../../microsoft-foundry/.env, written by microsoft-foundry/infra/deploy.sh.
 export NEO4J_AURA_MCP_URL="https://<INSTANCE_ID>.mcp-instances.neo4j.io/mcp"
 
 uv run aura_mcp_oauth_agent.py
