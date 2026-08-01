@@ -47,9 +47,14 @@ The **first run opens your browser** to sign in to Aura and consent. The token
 is cached at `~/.neo4j-aura-mcp-oauth.json` (mode `600`), so later runs are
 non-interactive. Delete that file to force re-consent.
 
-> Because the initial sign-in is interactive, this is a **local / developer**
-> pattern — it isn't suitable for the unattended Foundry hosted-agent runtime,
-> which would need a non-interactive credential instead.
+> **Note — this is a local / developer pattern.** The sign-in uses a `localhost`
+> redirect, your desktop browser, and a single local token file, so it runs where
+> a person can click through consent — not inside a headless Agent API backend
+> (e.g. serving a web chat client) or the Foundry hosted-agent runtime. To use
+> Aura's DCR MCP behind a web app, keep this OAuth approach but move it to your
+> web layer — a public redirect URI, consent in the end-user's browser session,
+> and per-user token storage — by replacing the `redirect_handler`,
+> `callback_handler`, and `TokenStorage` used here.
 
 Ask your own question and the agent calls `get-schema` then `read-cypher`
 against your graph:
