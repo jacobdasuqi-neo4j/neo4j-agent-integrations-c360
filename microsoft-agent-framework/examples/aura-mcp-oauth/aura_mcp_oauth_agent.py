@@ -48,12 +48,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import httpx
 from agent_framework import Agent, MCPStreamableHTTPTool
 from agent_framework.foundry import FoundryChatClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 from mcp.client.auth import OAuthClientProvider, TokenStorage
-from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthToken
 
 # Loopback address the DCR client registers as its OAuth redirect URI. It only
@@ -97,8 +97,13 @@ class FileTokenStorage(TokenStorage):
         return {}
 
     def _save(self, data: dict) -> None:
-        self._path.write_text(json.dumps(data))
-        self._path.chmod(0o600)
+        # Write 0o600 from creation, then atomically replace — the file holds
+        # bearer tokens, so never leave it world-readable or half-written.
+        tmp = self._path.with_name(self._path.name + ".tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f)
+        os.replace(tmp, self._path)
 
     async def get_tokens(self) -> OAuthToken | None:
         raw = self._load().get("tokens")
@@ -133,9 +138,17 @@ async def _callback_handler() -> tuple[str, str | None]:
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802 (http.server API)
-            params = parse_qs(urlparse(self.path).query)
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            # Ignore stray requests (e.g. /favicon.ico) — only the redirect to
+            # our callback path with a code (or error) completes the flow.
+            if parsed.path != CALLBACK_PATH or not (params.get("code") or params.get("error")):
+                self.send_response(404)
+                self.end_headers()
+                return
             captured["code"] = params.get("code", [None])[0]
             captured["state"] = params.get("state", [None])[0]
+            captured["error"] = params.get("error", [None])[0]
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.end_headers()
@@ -145,22 +158,24 @@ async def _callback_handler() -> tuple[str, str | None]:
         def log_message(self, *_args) -> None:  # silence request logging
             pass
 
-    def serve() -> None:
-        server = HTTPServer((CALLBACK_HOST, CALLBACK_PORT), Handler)
-        while not done.is_set():
-            server.handle_request()
-        server.server_close()
+    # Bind in this thread so a port-in-use error surfaces here instead of being
+    # swallowed in the background thread (which would hang forever on the wait).
+    server = HTTPServer((CALLBACK_HOST, CALLBACK_PORT), Handler)
+    server.timeout = 1  # let the loop re-check `done` even without traffic
 
-    await asyncio.to_thread(_run_until_captured, serve, done)
+    def serve() -> None:
+        try:
+            while not done.is_set():
+                server.handle_request()
+        finally:
+            server.server_close()
+
+    await asyncio.to_thread(serve)
+    if captured.get("error"):
+        raise RuntimeError(f"OAuth sign-in failed: {captured['error']}")
     if not captured.get("code"):
         raise RuntimeError("OAuth callback did not include an authorization code.")
     return captured["code"], captured.get("state")
-
-
-def _run_until_captured(serve, done: threading.Event) -> None:
-    thread = threading.Thread(target=serve, daemon=True)
-    thread.start()
-    done.wait()
 
 
 def _build_oauth(mcp_url: str) -> OAuthClientProvider:
@@ -200,11 +215,16 @@ async def main() -> None:
     )
 
     async with AsyncExitStack() as stack:
-        # The MCP SDK's own HTTP client factory, given the OAuth provider as its
-        # auth flow. The provider performs DCR + the PKCE sign-in on the first
-        # request — i.e. when the tool below connects and initializes the session.
+        # An httpx client carrying the OAuth provider as its auth flow
+        # (OAuthClientProvider is an httpx.Auth). The provider performs DCR + the
+        # PKCE sign-in on the first request — i.e. when the tool below connects
+        # and initializes the session.
         http_client = await stack.enter_async_context(
-            create_mcp_http_client(auth=_build_oauth(mcp_url))
+            httpx.AsyncClient(
+                auth=_build_oauth(mcp_url),
+                timeout=httpx.Timeout(60.0),
+                follow_redirects=True,
+            )
         )
         neo4j_mcp = await stack.enter_async_context(
             MCPStreamableHTTPTool(name="neo4j-aura", url=mcp_url, http_client=http_client)

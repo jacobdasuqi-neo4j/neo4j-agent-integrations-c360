@@ -1,8 +1,8 @@
 # Neo4j Aura-hosted MCP over OAuth (DCR) — Agent Framework
 
 Neo4j Aura ships a built-in MCP endpoint per instance
-(`https://<INSTANCE_ID>.mcp-instances.neo4j.io`). It's protected by **OAuth 2.0
-with Dynamic Client Registration (DCR)** — the client registers itself at
+(`https://<INSTANCE_ID>.mcp-instances.neo4j.io/mcp`). It's protected by **OAuth
+2.0 with Dynamic Client Registration (DCR)** — the client registers itself at
 runtime, so there's no client ID or secret to paste anywhere.
 
 That's why this path lives in Agent Framework rather than the Foundry portal: the
