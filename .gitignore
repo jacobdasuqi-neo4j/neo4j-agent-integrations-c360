@@ -19,9 +19,12 @@ __pycache__
 .venv
 .mcp-credentials.json
 .bedrock_agentcore
+*.egg-info/
 _antora-staging/
 _generated/
 
 # Bicep build artifact (az bicep build output)
 microsoft-foundry/infra/infra/main.json
+datarobot/dist/
+datarobot/.nams_conversation_cache.json
 .worktrees
