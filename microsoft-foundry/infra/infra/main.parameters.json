@@ -9,7 +9,7 @@
       "value": "${AZURE_LOCATION}"
     },
     "neo4jUri": {
-      "value": "${NEO4J_URI=neo4j+s://demo.neo4jlabs.com:7687}"
+      "value": "${NEO4J_URI=neo4j+s://b90eba24.databases.neo4j.io:7687}"
     },
     "neo4jDatabase": {
       "value": "${NEO4J_DATABASE=companies}"
