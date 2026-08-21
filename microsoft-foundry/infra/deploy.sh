@@ -59,7 +59,7 @@ sanitized_azd() {
 
 # Demo defaults (match .env.sample). Overridden below by the existing shared
 # .env (if any) and then by this folder's local .env.
-neo4j_uri="neo4j+s://b90eba24.databases.neo4j.io"
+neo4j_uri="neo4j+s://b90eba24.databases.neo4j.io:7687"
 neo4j_database="neo4j"
 neo4j_username="neo4j"
 neo4j_password="9yA8A9RHcK3HAeaA7jkXNJLZ6FbOZpmzzrshh384NmM"
