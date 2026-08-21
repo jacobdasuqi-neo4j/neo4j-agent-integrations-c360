@@ -11,7 +11,7 @@ param location string
 @description('Workload token used in resource names. Combined with environmentName to produce resource names like rg-foundry-neo4j-dev.')
 param workloadName string = 'foundry-neo4j'
 
-@description('Neo4j Bolt URI, for example neo4j+s://demo.neo4jlabs.com:7687.')
+@description('Neo4j Bolt URI, for example neo4j+s://b90eba24.databases.neo4j.io:7687.')
 param neo4jUri string
 
 @description('Neo4j database name.')
